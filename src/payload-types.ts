@@ -164,7 +164,6 @@ export interface Media {
  */
 export interface Gram {
   id: string;
-  title: string;
   caption?: string | null;
   location?: string | null;
   date: string;
@@ -278,7 +277,6 @@ export interface MediaSelect<T extends boolean = true> {
  * via the `definition` "grams_select".
  */
 export interface GramsSelect<T extends boolean = true> {
-  title?: T;
   caption?: T;
   location?: T;
   date?: T;

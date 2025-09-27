@@ -2,15 +2,13 @@ import type { CollectionConfig } from 'payload'
 
 export const Grams: CollectionConfig = {
   slug: 'grams',
+  access: {
+    read: () => true,
+  },
   admin: {
-    useAsTitle: 'title',
+    useAsTitle: 'date',
   },
   fields: [
-    {
-      name: 'title',
-      type: 'text',
-      required: true,
-    },
     {
       name: 'caption',
       type: 'text',

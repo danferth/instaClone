@@ -1,56 +1,100 @@
-import { headers as getHeaders } from 'next/headers.js'
-import Image from 'next/image'
-import { getPayload } from 'payload'
-import React from 'react'
-import { fileURLToPath } from 'url'
-
-import config from '@/payload.config'
+'use client'
+import React, { useState, useEffect, useRef } from 'react'
+import CurrentGram from '../components/CurrentGram'
+import GramSquare from '../components/GramSquare'
 import './styles.css'
+import axios from 'axios'
+import useScroll from '../components/useScroll'
+import type { Gram } from '../../payload-types'
+import { useInView } from 'react-intersection-observer'
+// import usePayload from '../components/usePayload'
+export default function HomePage() {
+  // const gram = await usePayload({ limit: 25, page: 1, sort: '-date' })
 
-export default async function HomePage() {
-  const headers = await getHeaders()
-  const payloadConfig = await config
-  const payload = await getPayload({ config: payloadConfig })
-  const { user } = await payload.auth({ headers })
-  const { docs: gram } = await payload.find({
-    collection: 'grams',
-    limit: 10,
-    sort: '-date',
+  interface GramResponce {
+    docs: Gram[]
+    hasNextPage: true
+    hasPrevPage: false
+    limit: 25
+    nextPage: 2
+    page: 1
+    pagingCounter: 1
+    prevPage: null
+    totalDocs: 34
+    totalPages: 2
+  }
+  const [gramResponce, setGramResponce] = useState<GramResponce | null>(null)
+  const [grams, setGrams] = useState<Gram[] | []>([])
+  // pagination
+  const [currentPageState, setCurrentPage] = useState<number>(1)
+  const [hasNextPageState, setHasNextPage] = useState<boolean>(true)
+  useEffect(() => {
+    fetchGrams(1)
+  }, [])
+  // fetch gram posts with page number
+  async function fetchGrams(page: number) {
+    console.log('fetching...')
+    const url = typeof window !== 'undefined' ? window.location.origin : ''
+    const query = `?limit=12&page=${page}&sort=-date`
+    try {
+      const response = await axios.get(`${url}/api/grams${query}`)
+      console.log(response)
+      setGramResponce(response.data)
+      setGrams((grams) => [...grams, ...response.data.docs])
+      setCurrentPage(response.data.page || 1)
+      setHasNextPage(response.data.hasNextPage)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+  // handle load more gram posts
+  function loadMoreGrams() {
+    if (!hasNextPageState) {
+      console.log('no more pages')
+      return
+    } else {
+      console.log('has next page')
+      const nextPage = currentPageState + 1
+      fetchGrams(nextPage)
+    }
+  }
+
+  // detect window height and scroll to load more grams
+  const { ref, inView } = useInView({
+    threshold: 1,
+    rootMargin: '0px',
+    triggerOnce: false,
   })
-  console.log(gram[0])
+
+  // const anchor = useRef<HTMLDivElement | null>(null)
+  // const scrollY = useScroll()
+  useEffect(() => {
+    if (inView) {
+      grams && loadMoreGrams()
+    }
+  }, [inView, grams])
 
   return (
-    <div className="home">
-      <div className="content">
-        {!user && <h1>Welcome to your new project.</h1>}
-        {user && <h1>Welcome back, {user.email}</h1>}
-        <div className="links">
-          <a
-            className="btn btn-primary btn-sm"
-            href={payloadConfig.routes.admin}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Go to admin panel
-          </a>
-        </div>
+    <div className="min-h-screen">
+      {/* curent gram display */}
+      <div className="w-full px-4 md:px-0 flex items-center justify-center mt-8 mb-12">
+        {grams && grams.length > 0 ? (
+          <CurrentGram gram={grams[0]} />
+        ) : (
+          <div className="">Loading...</div>
+        )}
       </div>
-      {gram?.map((g) => (
-        <div key={g.id} className="gram">
-          <h2>{g.title}</h2>
-          {g.image && typeof g.image === 'object' && (
-            <Image
-              alt={g.image.alt}
-              height={300}
-              src={g.image.url || '../../images/kenye.jpg'}
-              width={300}
-            />
-          )}
-          <p>{g.caption}</p>
-          <p>date/time: {new Date(g.date).toLocaleDateString()}</p>
-          <p>location: {g.location}</p>
-        </div>
-      ))}
+      {/* images wrapper */}
+      <div className="mx-auto md:max-w-9/12 w-full h-full grid grid-cols-3 md:grid-cols-4 gap-4 px-4 md:px-0 pb-4">
+        {grams && grams.length > 0 ? (
+          grams?.map((g) => <GramSquare key={g.id} g={g} />)
+        ) : (
+          <div className="">Loading...</div>
+        )}
+        {grams.length > 0 && (
+          <div ref={ref} className="border border-t-slate-900 col-span-3 md:col-span-4"></div>
+        )}
+      </div>
     </div>
   )
 }
